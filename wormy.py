@@ -9,13 +9,21 @@ from pygame.locals import *
 FPS = 15
 WINDOWWIDTH = 1200
 WINDOWHEIGHT = 900
-CELLSIZE = 30
+CELLSIZE = 20
 assert WINDOWWIDTH % CELLSIZE == 0, "Window width must be a multiple of cell size."
 assert WINDOWHEIGHT % CELLSIZE == 0, "Window height must be a multiple of cell size."
 CELLWIDTH = int(WINDOWWIDTH / CELLSIZE)
 CELLHEIGHT = int(WINDOWHEIGHT / CELLSIZE)
 
 NUM_APPLES = 5
+APPLE_OPTION = 6
+SHORT_TIME = 300
+
+APPLES = []
+APPLE_TIMES = []
+SCORE = [0, 0]
+APPLE_OPTION_TIMER = 360 # needs to be a multiple of 12
+APPLE_QUADRANT = random.randint(1, 5)
 
 #             R    G    B
 WHITE     = (255, 255, 255)
@@ -65,15 +73,11 @@ def runGame():
                    {'x': CELLWIDTH - startx - 2, 'y': CELLHEIGHT - starty}]
                   ]
     direction = [RIGHT, RIGHT]
-    score = [0, 0]
-    powerupTracker = [0, 0]
 
-    # Start the apples in a random place.
-    apples = []
-    for i in range(NUM_APPLES):
-        apples.append(getRandomLocation())
-
-    powerup = getRandomLocation()
+    del APPLES[:]
+    del APPLE_TIMES[:]
+    SCORE[0] = 0
+    SCORE[1] = 0
 
     while True: # main game loop
         for event in pygame.event.get(): # event handling loop
@@ -120,73 +124,34 @@ def runGame():
                     terminate()
 
         if wormCoords[0][HEAD] == wormCoords[1][HEAD]:
-            if sum(powerupTracker) > 0:
-                if powerupTracker[0] > 0:
-                    score[1] = score[1] - 2
-                    score[0] = score[0] + 2
-                else:
-                    score[0] = score[0] - 2
-                    score[1] = score[1] + 2
-            else:
-                score[0] = score[0] - 2
-                score[1] = score[1] - 2
-            return score # game over, both worms at fault for hitting eachother at same time
+            SCORE[0] = SCORE[0] - 2
+            SCORE[1] = SCORE[1] - 2
+            return SCORE # game over, both worms at fault for hitting eachother at same time
         if wormCoords[0][HEAD]['x'] == -1 or wormCoords[0][HEAD]['x'] == CELLWIDTH or wormCoords[0][HEAD][
             'y'] == -1 or wormCoords[0][HEAD]['y'] == CELLHEIGHT:
-            score[0] = score[0] - 2
-            return score # game over, worm 1's fault for hitting wall
+            SCORE[0] = SCORE[0] - 2
+            return SCORE # game over, worm 1's fault for hitting wall
         for wormBody in wormCoords[0][1:]:
             if wormBody['x'] == wormCoords[0][HEAD]['x'] and wormBody['y'] == wormCoords[0][HEAD]['y']:
-                score[0] = score[0] - 2
-                return score # game over, worm 1's fault for hitting itself
+                SCORE[0] = SCORE[0] - 2
+                return SCORE # game over, worm 1's fault for hitting itself
         if wormCoords[0][HEAD] in wormCoords[1]:
-            if powerupTracker[0] > 0:
-                score[1] = score[1] - 2
-                score[0] = score[0] + 2
-            else:
-                score[0] = score[0] - 2
-            return score  # game over, worm 1's fault for hitting worm 2
+            SCORE[0] = SCORE[0] - 2
+            return SCORE  # game over, worm 1's fault for hitting worm 2
         if wormCoords[1][HEAD]['x'] == -1 or wormCoords[1][HEAD]['x'] == CELLWIDTH or wormCoords[1][HEAD]['y'] == -1 or \
                 wormCoords[1][HEAD]['y'] == CELLHEIGHT:
-            score[1] = score[1] - 2
-            return score # game over, worm 2's fault for hitting wall or itself
+            SCORE[1] = SCORE[1] - 2
+            return SCORE # game over, worm 2's fault for hitting wall or itself
         for wormBody in wormCoords[1][1:]:
             if wormBody['x'] == wormCoords[1][HEAD]['x'] and wormBody['y'] == wormCoords[1][HEAD]['y']:
-                score[1] = score[1] - 2
-                return score # game over, worm 2's fault for hitting itself
+                SCORE[1] = SCORE[1] - 2
+                return SCORE # game over, worm 2's fault for hitting itself
         if wormCoords[1][HEAD] in wormCoords[0]:
-            if powerupTracker[1] > 0:
-                score[0] = score[0] - 2
-                score[1] = score[1] + 2
-            else:
-                score[1] = score[1] - 2
-            return score  # game over, worm 2's fault for hitting worm 1
+            SCORE[1] = SCORE[1] - 2
+            return SCORE  # game over, worm 2's fault for hitting worm 1
 
-        # check if worm has eaten an apply
-        apples[:] = [x for x in apples if not appleCollision(wormCoords[0], x)]
-        if len(apples) < NUM_APPLES:
-            apples.append(getRandomLocation())
-            score[0] = score[0] + 1
-        else:
-            del wormCoords[0][-1] # remove worm's tail segment
-
-        # check if worm 2 has eaten an apply
-        apples[:] = [x for x in apples if not appleCollision(wormCoords[1], x)]
-        if len(apples) < NUM_APPLES:
-            apples.append(getRandomLocation())
-            score[1] = score[1] + 1
-        else:
-            del wormCoords[1][-1]  # remove worm's tail segment
-
-        # check if worm has eaten powerup
-        if wormCoords[0][HEAD]['x'] == powerup['x'] and wormCoords[0][HEAD]['y'] == powerup['y']:
-            powerupTracker[0] = FPS * 4
-            powerup = getRandomLocation()
-
-        # check if worm 2 has eaten powerup
-        if wormCoords[1][HEAD]['x'] == powerup['x'] and wormCoords[1][HEAD]['y'] == powerup['y']:
-            powerupTracker[1] = FPS * 4
-            powerup = getRandomLocation()
+        # update apples
+        updateApples(wormCoords)
 
         # move the worm by adding a segment in the direction it is moving
         if direction[0] == UP:
@@ -209,19 +174,118 @@ def runGame():
         wormCoords[1].insert(0, newHeadB)
         DISPLAYSURF.fill(BGCOLOR)
         drawGrid()
-        drawWorms(wormCoords, powerupTracker)
-        for apple in apples:
+        drawWorms(wormCoords)
+        for apple in APPLES:
             drawApple(apple)
-        if sum(powerupTracker) > 0:
-            if powerupTracker[0] > 0:
-                powerupTracker[0] = powerupTracker[0] - 1
-            else:
-                powerupTracker[1] = powerupTracker[1] - 1
-        else:
-            drawPowerup(powerup)
-        drawScore(score)
+        drawScore(SCORE)
         pygame.display.update()
         FPSCLOCK.tick(FPS)
+
+def updateApples(wormCoords):
+    # check if worm has eaten an apply
+    genApples()
+    APPLES[:] = [x for x in APPLES if not appleCollision(wormCoords[0], x)]
+    if len(APPLES) < NUM_APPLES:
+        SCORE[0] = SCORE[0] + 1
+    else:
+        del wormCoords[0][-1]  # remove worm's tail segment
+    genApples()
+    # check if worm 2 has eaten an apply
+    APPLES[:] = [x for x in APPLES if not appleCollision(wormCoords[1], x)]
+    if len(APPLES) < NUM_APPLES:
+        SCORE[1] = SCORE[1] + 1
+    else:
+        del wormCoords[1][-1]  # remove worm's tail segment
+    genApples()
+
+    for i in range(NUM_APPLES):
+        APPLE_TIMES[i] -= 1
+        if APPLE_TIMES[i] <= 0:
+            del APPLES[i]
+            del APPLE_TIMES[i]
+            genApples()
+            SCORE[0] -= 1
+            SCORE[1] -= 1
+
+def genApples():
+    """Generates the apples with the following options:
+    1. Uniformly distributed, infinite lifetime
+    2. Uniformly distributed, short lifetime
+    3. Uniformly distributed, variable lifetime
+    4. Alternate between 1,2, and 3.
+    5. Apples appear in a single quadrant.
+    6. Apples appear in single quadrant, quadrant rotates over time
+    7. Custom apple pattern that benefits centralized control"""
+    if APPLE_OPTION == 1:
+        genApplesOne()
+    elif APPLE_OPTION == 2:
+        genApplesTwo()
+    elif APPLE_OPTION == 3:
+        genApplesThree()
+    elif APPLE_OPTION == 4:
+        genApplesFour()
+    elif APPLE_OPTION == 5:
+        genApplesFive()
+    elif APPLE_OPTION == 6:
+        genApplesSix()
+    # elif APPLE_OPTION == 7:
+    #     genApplesSeven()
+    else:
+        print("Error: invalid genApples option")
+
+def genApplesOne():
+    while len(APPLES) < NUM_APPLES:
+        APPLES.append(getRandomLocation())
+        APPLE_TIMES.append(99999)
+
+def genApplesTwo():
+    while len(APPLES) < NUM_APPLES:
+        APPLES.append(getRandomLocation())
+        APPLE_TIMES.append(SHORT_TIME)
+
+def genApplesThree():
+    while len(APPLES) < NUM_APPLES:
+        APPLES.append(getRandomLocation())
+        APPLE_TIMES.append(random.randint(SHORT_TIME/3, SHORT_TIME*3))
+
+def genApplesFour():
+    global APPLE_OPTION_TIMER
+    APPLE_OPTION_TIMER -= 1
+    if APPLE_OPTION_TIMER <= 0:
+        APPLE_OPTION_TIMER = 360
+    if APPLE_OPTION_TIMER <= 120:
+        genApplesThree()
+    elif APPLE_OPTION_TIMER <= 240:
+        genApplesTwo()
+    else:
+        genApplesOne()
+
+def genApplesFive():
+    while len(APPLES) < NUM_APPLES:
+        APPLES.append(getRandomLocationQuadrant(APPLE_QUADRANT))
+        APPLE_TIMES.append(SHORT_TIME)
+
+def genApplesSix():
+    global APPLE_OPTION_TIMER
+    APPLE_OPTION_TIMER -= 1
+    if APPLE_OPTION_TIMER <= 0:
+        APPLE_OPTION_TIMER = 360
+    if APPLE_OPTION_TIMER <= 90:
+        while len(APPLES) < NUM_APPLES:
+            APPLES.append(getRandomLocationQuadrant(1))
+            APPLE_TIMES.append(SHORT_TIME)
+    elif APPLE_OPTION_TIMER <= 180:
+        while len(APPLES) < NUM_APPLES:
+            APPLES.append(getRandomLocationQuadrant(2))
+            APPLE_TIMES.append(SHORT_TIME)
+    elif APPLE_OPTION_TIMER <= 270:
+        while len(APPLES) < NUM_APPLES:
+            APPLES.append(getRandomLocationQuadrant(3))
+            APPLE_TIMES.append(SHORT_TIME)
+    else:
+        while len(APPLES) < NUM_APPLES:
+            APPLES.append(getRandomLocationQuadrant(4))
+            APPLE_TIMES.append(SHORT_TIME)
 
 def appleCollision(wormCoords, apple):
     if wormCoords[HEAD]['x'] == apple['x'] and wormCoords[HEAD]['y'] == apple['y']:
@@ -286,6 +350,18 @@ def terminate():
 def getRandomLocation():
     return {'x': random.randint(0, CELLWIDTH - 1), 'y': random.randint(0, CELLHEIGHT - 1)}
 
+def getRandomLocationQuadrant(quadrant):
+    print(quadrant)
+    print(APPLE_OPTION_TIMER)
+    if quadrant == 1:
+        return {'x': random.randint(0, int(CELLWIDTH/2) - 1), 'y': random.randint(0, int(CELLHEIGHT/2) - 1)}
+    elif quadrant == 2:
+        return {'x': random.randint(int(CELLWIDTH/2) - 1, CELLWIDTH - 1), 'y': random.randint(0, int(CELLHEIGHT/2) - 1)}
+    elif quadrant == 3:
+        return {'x': random.randint(0, int(CELLWIDTH/2) - 1), 'y': random.randint(int(CELLHEIGHT/2) - 1, CELLHEIGHT -1)}
+    else:
+        return {'x': random.randint(int(CELLWIDTH/2) - 1, CELLWIDTH - 1), 'y': random.randint(int(CELLHEIGHT/2) - 1, CELLHEIGHT - 1)}
+
 
 def showGameOverScreen(score):
     gameOverFont = pygame.font.Font('freesansbold.ttf', 150)
@@ -318,27 +394,9 @@ def drawScore(score):
     scoreRect.topleft = (WINDOWWIDTH - 280, 10)
     DISPLAYSURF.blit(scoreSurf, scoreRect)
 
-def drawWorms(wormCoords, powerupTracker):
-    if powerupTracker[0] > 0:
-        if powerupTracker[0] < FPS:
-            if powerupTracker[0] % 2 == 0:
-                drawWorm(wormCoords[0], [DARKGREEN, GREEN])
-            else:
-                drawWorm(wormCoords[0], [DARKYELLOW, YELLOW])
-        else:
-            drawWorm(wormCoords[0], [DARKYELLOW, YELLOW])
-    else:
-        drawWorm(wormCoords[0], [DARKGREEN, GREEN])
-    if powerupTracker[1] > 0:
-        if powerupTracker[1] < FPS:
-            if powerupTracker[1] % 2 == 0:
-                drawWorm(wormCoords[1], [DARKBLUE, BLUE])
-            else:
-                drawWorm(wormCoords[1], [DARKYELLOW, YELLOW])
-        else:
-            drawWorm(wormCoords[1], [DARKYELLOW, YELLOW])
-    else:
-        drawWorm(wormCoords[1], [DARKBLUE, BLUE])
+def drawWorms(wormCoords):
+    drawWorm(wormCoords[0], [DARKGREEN, GREEN])
+    drawWorm(wormCoords[1], [DARKBLUE, BLUE])
 
 def drawWorm(wormCoords, colors):
     for coord in wormCoords:
@@ -349,19 +407,11 @@ def drawWorm(wormCoords, colors):
         wormInnerSegmentRect = pygame.Rect(x + 4, y + 4, CELLSIZE - 8, CELLSIZE - 8)
         pygame.draw.rect(DISPLAYSURF, colors[1], wormInnerSegmentRect)
 
-
 def drawApple(coord):
     x = coord['x'] * CELLSIZE
     y = coord['y'] * CELLSIZE
     appleRect = pygame.Rect(x, y, CELLSIZE, CELLSIZE)
     pygame.draw.rect(DISPLAYSURF, RED, appleRect)
-
-def drawPowerup(coord):
-    x = coord['x'] * CELLSIZE
-    y = coord['y'] * CELLSIZE
-    powerRect = pygame.Rect(x, y, CELLSIZE, CELLSIZE)
-    pygame.draw.rect(DISPLAYSURF, YELLOW, powerRect)
-
 
 def drawGrid():
     for x in range(0, WINDOWWIDTH, CELLSIZE): # draw vertical lines
