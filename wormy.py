@@ -17,10 +17,10 @@ assert WINDOWHEIGHT % CELLSIZE == 0, "Window height must be a multiple of cell s
 CELLWIDTH = int(WINDOWWIDTH / CELLSIZE)
 CELLHEIGHT = int(WINDOWHEIGHT / CELLSIZE)
 
-NUM_APPLES = 5
-APPLE_OPTION = 1
+NUM_APPLES = 8
+APPLE_OPTION = 6
 SHORT_TIME = 300
-MIN_APPLE_DISTANCE = 15000
+MIN_APPLE_DISTANCE = 15
 
 APPLES = []
 APPLE_TIMES = []
@@ -399,37 +399,40 @@ def findNearestApple(wormCoords):
                 shortest_dist = dist
                 nearestApple = apple
 
-    return nearestApple
+    if shortest_dist < MIN_APPLE_DISTANCE:
+        return nearestApple
 
 def findTargetDirection(target, wormCoords):
     # Move towards the target
-    if target['x'] == wormCoords['x']:
-        if target['y'] < wormCoords['y']:
-            return UP
-        else:
-            return DOWN
-    if target['x'] < wormCoords['x']:
-        return LEFT
+    if target is not None:
+        if target['x'] == wormCoords['x']:
+            if target['y'] < wormCoords['y']:
+                return UP
+            else:
+                return DOWN
 
     # avoid corners
-    if wormCoords['x'] <= 0 and wormCoords['y'] <= 0:
+    if wormCoords['x'] == 0 and wormCoords['y'] == 0:
         return DOWN
-    if wormCoords['x'] <= 0 and wormCoords['y'] >= CELLHEIGHT - 1:
+    if wormCoords['x'] == 0 and wormCoords['y'] == CELLHEIGHT - 1:
         return RIGHT
-    if wormCoords['x'] >= CELLWIDTH - 1 and wormCoords['y'] <= 0:
+    if wormCoords['x'] == CELLWIDTH - 1 and wormCoords['y'] == 0:
         return LEFT
-    if wormCoords['x'] >= CELLWIDTH - 1 and wormCoords['y'] >= CELLHEIGHT - 1:
+    if wormCoords['x'] == CELLWIDTH - 1 and wormCoords['y'] == CELLHEIGHT - 1:
         return UP
     # avoid walls
-    if wormCoords['x'] <= 0:
+    if wormCoords['x'] == 0:
         return DOWN
-    if wormCoords['x'] >= CELLWIDTH - 1:
+    if wormCoords['x'] == CELLWIDTH - 1:
         return UP
-    if wormCoords['y'] <= 0:
+    if wormCoords['y'] == 0:
         return RIGHT
-    if wormCoords['y'] >= CELLHEIGHT - 1:
+    if wormCoords['y'] == CELLHEIGHT - 1:
         return LEFT
 
+    if target is not None:
+        if target['x'] < wormCoords['x']:
+            return LEFT
     return RIGHT
 
 def handleAgentInput(direction, wormCoords):
