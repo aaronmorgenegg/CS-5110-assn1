@@ -4,9 +4,11 @@
 # Released under a "Simplified BSD" license
 
 import random, pygame, sys
+
+from math import sqrt
 from pygame.locals import *
 
-FPS = 15
+FPS =3
 WINDOWWIDTH = 1200
 WINDOWHEIGHT = 900
 CELLSIZE = 20
@@ -16,8 +18,9 @@ CELLWIDTH = int(WINDOWWIDTH / CELLSIZE)
 CELLHEIGHT = int(WINDOWHEIGHT / CELLSIZE)
 
 NUM_APPLES = 5
-APPLE_OPTION = 6
+APPLE_OPTION = 1
 SHORT_TIME = 300
+MIN_APPLE_DISTANCE = 15000
 
 APPLES = []
 APPLE_TIMES = []
@@ -80,48 +83,11 @@ def runGame():
     SCORE[1] = 0
 
     while True: # main game loop
-        for event in pygame.event.get(): # event handling loop
-            if event.type == QUIT:
-                terminate()
-            elif event.type == KEYDOWN:
-                if (event.key == K_LEFT) and direction[0] != RIGHT:
-                    direction[0] = LEFT
-                elif (event.key == K_RIGHT) and direction[0] != LEFT:
-                    direction[0] = RIGHT
-                elif (event.key == K_UP) and direction[0] != DOWN:
-                    direction[0] = UP
-                elif (event.key == K_DOWN) and direction[0] != UP:
-                    direction[0] = DOWN
-                elif (event.key == K_a) and direction[1] != RIGHT:
-                    direction[1] = LEFT
-                elif (event.key == K_d) and direction[1] != LEFT:
-                    direction[1] = RIGHT
-                elif (event.key == K_w) and direction[1] != DOWN:
-                    direction[1] = UP
-                elif (event.key == K_s) and direction[1] != UP:
-                    direction[1] = DOWN
-                elif (event.key == K_KP4):
-                    if direction[0] != RIGHT:
-                        direction[0] = LEFT
-                    if direction[1] != RIGHT:
-                        direction[1] = LEFT
-                elif (event.key == K_KP6):
-                    if direction[0] != LEFT:
-                        direction[0] = RIGHT
-                    if direction[1] != LEFT:
-                        direction[1] = RIGHT
-                elif (event.key == K_KP8):
-                    if direction[0] != DOWN:
-                        direction[0] = UP
-                    if direction[1] != DOWN:
-                        direction[1] = UP
-                elif (event.key == K_KP2):
-                    if direction[0] != UP:
-                        direction[0] = DOWN
-                    if direction[1] != UP:
-                        direction[1] = DOWN
-                elif event.key == K_ESCAPE:
-                    terminate()
+        # update apples
+        updateApples(wormCoords)
+
+        # direction = handlePlayerInput(direction)
+        direction = handleAgentInput(direction, wormCoords)
 
         if wormCoords[0][HEAD] == wormCoords[1][HEAD]:
             SCORE[0] = SCORE[0] - 2
@@ -149,9 +115,6 @@ def runGame():
         if wormCoords[1][HEAD] in wormCoords[0]:
             SCORE[1] = SCORE[1] - 2
             return SCORE  # game over, worm 2's fault for hitting worm 1
-
-        # update apples
-        updateApples(wormCoords)
 
         # move the worm by adding a segment in the direction it is moving
         if direction[0] == UP:
@@ -351,8 +314,6 @@ def getRandomLocation():
     return {'x': random.randint(0, CELLWIDTH - 1), 'y': random.randint(0, CELLHEIGHT - 1)}
 
 def getRandomLocationQuadrant(quadrant):
-    print(quadrant)
-    print(APPLE_OPTION_TIMER)
     if quadrant == 1:
         return {'x': random.randint(0, int(CELLWIDTH/2) - 1), 'y': random.randint(0, int(CELLHEIGHT/2) - 1)}
     elif quadrant == 2:
@@ -418,6 +379,124 @@ def drawGrid():
         pygame.draw.line(DISPLAYSURF, DARKGRAY, (x, 0), (x, WINDOWHEIGHT))
     for y in range(0, WINDOWHEIGHT, CELLSIZE): # draw horizontal lines
         pygame.draw.line(DISPLAYSURF, DARKGRAY, (0, y), (WINDOWWIDTH, y))
+
+def distance(x1, x2, y1, y2):
+    return sqrt( (x2 - x1)**2 + (y2 - y1)**2 )
+
+def findNearestApple(wormCoords):
+    nearestApple = APPLES[0]
+    shortest_dist = distance(wormCoords['x'],
+                             nearestApple['x'],
+                             wormCoords['y'],
+                             nearestApple['y'])
+    for apple in APPLES:
+        dist = distance(wormCoords['x'],
+                             apple['x'],
+                             wormCoords['y'],
+                             apple['y'])
+        if dist <= MIN_APPLE_DISTANCE:
+            if dist < shortest_dist:
+                shortest_dist = dist
+                nearestApple = apple
+
+    return nearestApple
+
+def findTargetDirection(target, wormCoords):
+    if target['x'] == wormCoords['x']:
+        if target['y'] < wormCoords['y']:
+            return DOWN
+        else:
+            return UP
+
+    if target['y'] == wormCoords['y']:
+        if target['x'] < wormCoords['x']:
+            return LEFT
+        else:
+            return RIGHT
+
+    if target['x'] < wormCoords['x'] and target['y'] < wormCoords['y']: # bottom left
+        if wormCoords['x'] - target['x'] < wormCoords['y'] - target['y']:
+            return DOWN
+        else:
+            return LEFT
+    elif target['x'] < wormCoords['x'] and target['y'] > wormCoords['y']: # top left
+        if wormCoords['x'] - target['x'] < target['y'] - wormCoords['y']:
+            return UP
+        else:
+            return LEFT
+    elif target['x'] >  wormCoords['x'] and target['y'] < wormCoords['y']: # bottom right
+        if target['x'] - wormCoords['x'] < wormCoords['y'] - target['y']:
+            return DOWN
+        else:
+            return RIGHT
+    else: # target['x'] > wormCoords['x'] and target['y'] > wormCoords['y'] # top right
+        if target['x'] - wormCoords['x'] < target['y'] - wormCoords['y']:
+            return UP
+        else:
+            return RIGHT
+
+def handleAgentInput(direction, wormCoords):
+    for i in range(len(wormCoords)):
+        target = findNearestApple(wormCoords[i][HEAD])
+        temp_dir = findTargetDirection(target, wormCoords[i][HEAD])
+        if temp_dir == UP and direction[i] == DOWN:
+            direction[i] = LEFT
+        elif temp_dir == RIGHT and direction[i] == LEFT:
+            direction[i] = UP
+        elif temp_dir == DOWN and direction[i] == UP:
+            direction[i] = RIGHT
+        elif temp_dir == LEFT and direction[i] == RIGHT:
+            direction[i] = DOWN
+        else:
+            direction[i] = temp_dir
+
+    return direction
+
+def handlePlayerInput(direction):
+    for event in pygame.event.get():  # event handling loop
+        if event.type == QUIT:
+            terminate()
+        elif event.type == KEYDOWN:
+            if (event.key == K_LEFT) and direction[0] != RIGHT:
+                direction[0] = LEFT
+            elif (event.key == K_RIGHT) and direction[0] != LEFT:
+                direction[0] = RIGHT
+            elif (event.key == K_UP) and direction[0] != DOWN:
+                direction[0] = UP
+            elif (event.key == K_DOWN) and direction[0] != UP:
+                direction[0] = DOWN
+            elif (event.key == K_a) and direction[1] != RIGHT:
+                direction[1] = LEFT
+            elif (event.key == K_d) and direction[1] != LEFT:
+                direction[1] = RIGHT
+            elif (event.key == K_w) and direction[1] != DOWN:
+                direction[1] = UP
+            elif (event.key == K_s) and direction[1] != UP:
+                direction[1] = DOWN
+            elif (event.key == K_KP4):
+                if direction[0] != RIGHT:
+                    direction[0] = LEFT
+                if direction[1] != RIGHT:
+                    direction[1] = LEFT
+            elif (event.key == K_KP6):
+                if direction[0] != LEFT:
+                    direction[0] = RIGHT
+                if direction[1] != LEFT:
+                    direction[1] = RIGHT
+            elif (event.key == K_KP8):
+                if direction[0] != DOWN:
+                    direction[0] = UP
+                if direction[1] != DOWN:
+                    direction[1] = UP
+            elif (event.key == K_KP2):
+                if direction[0] != UP:
+                    direction[0] = DOWN
+                if direction[1] != UP:
+                    direction[1] = DOWN
+            elif event.key == K_ESCAPE:
+                terminate()
+
+    return direction
 
 
 if __name__ == '__main__':
