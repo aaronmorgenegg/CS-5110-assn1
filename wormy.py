@@ -8,7 +8,7 @@ import random, pygame, sys
 from math import sqrt
 from pygame.locals import *
 
-FPS =3
+FPS = 15
 WINDOWWIDTH = 1200
 WINDOWHEIGHT = 900
 CELLSIZE = 20
@@ -402,51 +402,48 @@ def findNearestApple(wormCoords):
     return nearestApple
 
 def findTargetDirection(target, wormCoords):
+    # Move towards the target
     if target['x'] == wormCoords['x']:
         if target['y'] < wormCoords['y']:
-            return DOWN
-        else:
             return UP
+        else:
+            return DOWN
+    if target['x'] < wormCoords['x']:
+        return LEFT
 
-    if target['y'] == wormCoords['y']:
-        if target['x'] < wormCoords['x']:
-            return LEFT
-        else:
-            return RIGHT
+    # avoid corners
+    if wormCoords['x'] <= 0 and wormCoords['y'] <= 0:
+        return DOWN
+    if wormCoords['x'] <= 0 and wormCoords['y'] >= CELLHEIGHT - 1:
+        return RIGHT
+    if wormCoords['x'] >= CELLWIDTH - 1 and wormCoords['y'] <= 0:
+        return LEFT
+    if wormCoords['x'] >= CELLWIDTH - 1 and wormCoords['y'] >= CELLHEIGHT - 1:
+        return UP
+    # avoid walls
+    if wormCoords['x'] <= 0:
+        return DOWN
+    if wormCoords['x'] >= CELLWIDTH - 1:
+        return UP
+    if wormCoords['y'] <= 0:
+        return RIGHT
+    if wormCoords['y'] >= CELLHEIGHT - 1:
+        return LEFT
 
-    if target['x'] < wormCoords['x'] and target['y'] < wormCoords['y']: # bottom left
-        if wormCoords['x'] - target['x'] < wormCoords['y'] - target['y']:
-            return DOWN
-        else:
-            return LEFT
-    elif target['x'] < wormCoords['x'] and target['y'] > wormCoords['y']: # top left
-        if wormCoords['x'] - target['x'] < target['y'] - wormCoords['y']:
-            return UP
-        else:
-            return LEFT
-    elif target['x'] >  wormCoords['x'] and target['y'] < wormCoords['y']: # bottom right
-        if target['x'] - wormCoords['x'] < wormCoords['y'] - target['y']:
-            return DOWN
-        else:
-            return RIGHT
-    else: # target['x'] > wormCoords['x'] and target['y'] > wormCoords['y'] # top right
-        if target['x'] - wormCoords['x'] < target['y'] - wormCoords['y']:
-            return UP
-        else:
-            return RIGHT
+    return RIGHT
 
 def handleAgentInput(direction, wormCoords):
     for i in range(len(wormCoords)):
         target = findNearestApple(wormCoords[i][HEAD])
         temp_dir = findTargetDirection(target, wormCoords[i][HEAD])
         if temp_dir == UP and direction[i] == DOWN:
-            direction[i] = LEFT
+            pass
         elif temp_dir == RIGHT and direction[i] == LEFT:
-            direction[i] = UP
+            pass
         elif temp_dir == DOWN and direction[i] == UP:
-            direction[i] = RIGHT
+            pass
         elif temp_dir == LEFT and direction[i] == RIGHT:
-            direction[i] = DOWN
+            pass
         else:
             direction[i] = temp_dir
 
