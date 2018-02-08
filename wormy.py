@@ -17,14 +17,14 @@ assert WINDOWHEIGHT % CELLSIZE == 0, "Window height must be a multiple of cell s
 CELLWIDTH = int(WINDOWWIDTH / CELLSIZE)
 CELLHEIGHT = int(WINDOWHEIGHT / CELLSIZE)
 
-NUM_APPLES = 8
-APPLE_OPTION = 6
+NUM_APPLES = 20
+APPLE_OPTION = 3
 SHORT_TIME = 300
 MIN_APPLE_DISTANCE = 15
 
 APPLES = []
 APPLE_TIMES = []
-SCORE = [0, 0]
+SCORE = 0
 APPLE_OPTION_TIMER = 360 # needs to be a multiple of 12
 APPLE_QUADRANT = random.randint(1, 5)
 
@@ -60,7 +60,7 @@ def main():
     showStartScreen()
     while True:
         score = runGame()
-        showGameOverScreen(score)
+        showGameOverScreen()
 
 
 def runGame():
@@ -79,8 +79,7 @@ def runGame():
 
     del APPLES[:]
     del APPLE_TIMES[:]
-    SCORE[0] = 0
-    SCORE[1] = 0
+    SCORE = 0
 
     while True: # main game loop
         # update apples
@@ -90,31 +89,23 @@ def runGame():
         direction = handleAgentInput(direction, wormCoords)
 
         if wormCoords[0][HEAD] == wormCoords[1][HEAD]:
-            SCORE[0] = SCORE[0] - 2
-            SCORE[1] = SCORE[1] - 2
-            return SCORE # game over, both worms at fault for hitting eachother at same time
+            return # game over, both worms at fault for hitting eachother at same time
         if wormCoords[0][HEAD]['x'] == -1 or wormCoords[0][HEAD]['x'] == CELLWIDTH or wormCoords[0][HEAD][
             'y'] == -1 or wormCoords[0][HEAD]['y'] == CELLHEIGHT:
-            SCORE[0] = SCORE[0] - 2
-            return SCORE # game over, worm 1's fault for hitting wall
+            return # game over, worm 1's fault for hitting wall
         for wormBody in wormCoords[0][1:]:
             if wormBody['x'] == wormCoords[0][HEAD]['x'] and wormBody['y'] == wormCoords[0][HEAD]['y']:
-                SCORE[0] = SCORE[0] - 2
-                return SCORE # game over, worm 1's fault for hitting itself
+                return # game over, worm 1's fault for hitting itself
         if wormCoords[0][HEAD] in wormCoords[1]:
-            SCORE[0] = SCORE[0] - 2
-            return SCORE  # game over, worm 1's fault for hitting worm 2
+            return # game over, worm 1's fault for hitting worm 2
         if wormCoords[1][HEAD]['x'] == -1 or wormCoords[1][HEAD]['x'] == CELLWIDTH or wormCoords[1][HEAD]['y'] == -1 or \
                 wormCoords[1][HEAD]['y'] == CELLHEIGHT:
-            SCORE[1] = SCORE[1] - 2
-            return SCORE # game over, worm 2's fault for hitting wall or itself
+            return # game over, worm 2's fault for hitting wall or itself
         for wormBody in wormCoords[1][1:]:
             if wormBody['x'] == wormCoords[1][HEAD]['x'] and wormBody['y'] == wormCoords[1][HEAD]['y']:
-                SCORE[1] = SCORE[1] - 2
-                return SCORE # game over, worm 2's fault for hitting itself
+                return # game over, worm 2's fault for hitting itself
         if wormCoords[1][HEAD] in wormCoords[0]:
-            SCORE[1] = SCORE[1] - 2
-            return SCORE  # game over, worm 2's fault for hitting worm 1
+            return # game over, worm 2's fault for hitting worm 1
 
         # move the worm by adding a segment in the direction it is moving
         if direction[0] == UP:
@@ -140,23 +131,24 @@ def runGame():
         drawWorms(wormCoords)
         for apple in APPLES:
             drawApple(apple)
-        drawScore(SCORE)
+        drawScore()
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
 def updateApples(wormCoords):
     # check if worm has eaten an apply
+    global SCORE
     genApples()
     APPLES[:] = [x for x in APPLES if not appleCollision(wormCoords[0], x)]
     if len(APPLES) < NUM_APPLES:
-        SCORE[0] = SCORE[0] + 1
+        SCORE += 1
     else:
         del wormCoords[0][-1]  # remove worm's tail segment
     genApples()
     # check if worm 2 has eaten an apply
     APPLES[:] = [x for x in APPLES if not appleCollision(wormCoords[1], x)]
     if len(APPLES) < NUM_APPLES:
-        SCORE[1] = SCORE[1] + 1
+        SCORE += 1
     else:
         del wormCoords[1][-1]  # remove worm's tail segment
     genApples()
@@ -167,8 +159,7 @@ def updateApples(wormCoords):
             del APPLES[i]
             del APPLE_TIMES[i]
             genApples()
-            SCORE[0] -= 1
-            SCORE[1] -= 1
+            SCORE -= 1
 
 def genApples():
     """Generates the apples with the following options:
@@ -262,7 +253,6 @@ def drawPressKeyMsg():
     pressKeyRect.topleft = (WINDOWWIDTH - 200, WINDOWHEIGHT - 30)
     DISPLAYSURF.blit(pressKeySurf, pressKeyRect)
 
-
 def checkForKeyPress():
     if len(pygame.event.get(QUIT)) > 0:
         terminate()
@@ -273,7 +263,6 @@ def checkForKeyPress():
     if keyUpEvents[0].key == K_ESCAPE:
         terminate()
     return keyUpEvents[0].key
-
 
 def showStartScreen():
     titleFont = pygame.font.Font('freesansbold.ttf', 100)
@@ -304,11 +293,9 @@ def showStartScreen():
         degrees1 += 3 # rotate by 3 degrees each frame
         degrees2 += 7 # rotate by 7 degrees each frame
 
-
 def terminate():
     pygame.quit()
     sys.exit()
-
 
 def getRandomLocation():
     return {'x': random.randint(0, CELLWIDTH - 1), 'y': random.randint(0, CELLHEIGHT - 1)}
@@ -323,22 +310,17 @@ def getRandomLocationQuadrant(quadrant):
     else:
         return {'x': random.randint(int(CELLWIDTH/2) - 1, CELLWIDTH - 1), 'y': random.randint(int(CELLHEIGHT/2) - 1, CELLHEIGHT - 1)}
 
-
-def showGameOverScreen(score):
+def showGameOverScreen():
     gameOverFont = pygame.font.Font('freesansbold.ttf', 150)
     gameSurf = gameOverFont.render('Game', True, WHITE)
     overSurf = gameOverFont.render('Over', True, WHITE)
-    scoreSurf = BASICFONT.render('Green Score: %s   Blue Score: %s' % (score[0], score[1]), True, WHITE)
     gameRect = gameSurf.get_rect()
     overRect = overSurf.get_rect()
-    scoreRect = scoreSurf.get_rect()
     gameRect.midtop = (WINDOWWIDTH / 2, 100)
     overRect.midtop = (WINDOWWIDTH / 2, gameRect.height + 100 + 25)
-    scoreRect.midtop = (WINDOWWIDTH / 2, 450)
 
     DISPLAYSURF.blit(gameSurf, gameRect)
     DISPLAYSURF.blit(overSurf, overRect)
-    DISPLAYSURF.blit(scoreSurf, scoreRect)
     drawPressKeyMsg()
     pygame.display.update()
     pygame.time.wait(500)
@@ -349,10 +331,11 @@ def showGameOverScreen(score):
             pygame.event.get() # clear event queue
             return
 
-def drawScore(score):
-    scoreSurf = BASICFONT.render('Green Score: %s   Blue Score: %s' % (score[0], score[1]), True, WHITE)
+def drawScore():
+    global SCORE
+    scoreSurf = BASICFONT.render('Score: %s' % (SCORE), True, WHITE)
     scoreRect = scoreSurf.get_rect()
-    scoreRect.topleft = (WINDOWWIDTH - 280, 10)
+    scoreRect.topleft = (WINDOWWIDTH - 100, 10)
     DISPLAYSURF.blit(scoreSurf, scoreRect)
 
 def drawWorms(wormCoords):
