@@ -18,7 +18,7 @@ assert WINDOWHEIGHT % CELLSIZE == 0, "Window height must be a multiple of cell s
 CELLWIDTH = int(WINDOWWIDTH / CELLSIZE)
 CELLHEIGHT = int(WINDOWHEIGHT / CELLSIZE)
 
-NUM_APPLES = 20
+NUM_APPLES = 30
 APPLE_OPTION = 2
 SHORT_TIME = 300
 MIN_APPLE_DISTANCE = 15
@@ -30,6 +30,8 @@ APPLE_OPTION_TIMER = 360 # needs to be a multiple of 12
 APPLE_QUADRANT = random.randint(1, 5)
 
 MAX_WORM_LENGTH = 10
+AGENT_CONTROL = True
+CENTRAL_CONTROL = False
 
 #             R    G    B
 WHITE     = (255, 255, 255)
@@ -90,8 +92,12 @@ def runGame():
         # update apples
         updateApples(wormCoords)
 
-        # direction = handlePlayerInput(direction)
-        direction = handleAgentInput(direction, wormCoords)
+        if AGENT_CONTROL:
+            direction = handleAgentInput(direction, wormCoords)
+        elif CENTRAL_CONTROL:
+            direction = handleCentralInput(direction, wormCoords)
+        else:
+            direction = handlePlayerInput(direction)
 
         dead_worms = []
 
@@ -124,14 +130,16 @@ def runGame():
                                   {'x': wormCoords[i][1]['x'], 'y': wormCoords[i][1]['y']},
                                   {'x': wormCoords[i][2]['x'], 'y': wormCoords[i][2]['y']}])
 
-                wormCoords.append([{'x': wormCoords[i][6]['x'], 'y': wormCoords[i][6]['y']},
-                                   {'x': wormCoords[i][7]['x'], 'y': wormCoords[i][7]['y']},
-                                   {'x': wormCoords[i][8]['x'], 'y': wormCoords[i][8]['y']}])
+                wormCoords.append([{'x': wormCoords[i][7]['x'], 'y': wormCoords[i][7]['y']},
+                                   {'x': wormCoords[i][8]['x'], 'y': wormCoords[i][8]['y']},
+                                   {'x': wormCoords[i][9]['x'], 'y': wormCoords[i][9]['y']}])
                 direction.append(direction[i])
                 direction.append(direction[i])
                 colors.append(getRandomColor())
                 colors.append(getRandomColor())
 
+
+        dead_worms.sort(reverse=True)
         for i in dead_worms:
             del wormCoords[i]
             del direction[i]
@@ -439,6 +447,23 @@ def findTargetDirection(target, wormCoords):
     return RIGHT
 
 def handleAgentInput(direction, wormCoords):
+    for i in range(len(wormCoords)):
+        target = findNearestApple(wormCoords[i][HEAD])
+        temp_dir = findTargetDirection(target, wormCoords[i][HEAD])
+        if temp_dir == UP and direction[i] == DOWN:
+            pass
+        elif temp_dir == RIGHT and direction[i] == LEFT:
+            pass
+        elif temp_dir == DOWN and direction[i] == UP:
+            pass
+        elif temp_dir == LEFT and direction[i] == RIGHT:
+            pass
+        else:
+            direction[i] = temp_dir
+
+    return direction
+
+def handleCentralInput(direction, wormCoords):
     for i in range(len(wormCoords)):
         target = findNearestApple(wormCoords[i][HEAD])
         temp_dir = findTargetDirection(target, wormCoords[i][HEAD])
