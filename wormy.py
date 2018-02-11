@@ -3,12 +3,13 @@
 # http://inventwithpython.com/pygame
 # Released under a "Simplified BSD" license
 
-import random, pygame, sys
+import random, pygame, sys, itertools
 
 from math import sqrt
 from pygame.locals import *
 
-FPS = 15
+
+FPS = 60
 WINDOWWIDTH = 1200
 WINDOWHEIGHT = 900
 CELLSIZE = 20
@@ -27,6 +28,8 @@ APPLE_TIMES = []
 SCORE = 0
 APPLE_OPTION_TIMER = 360 # needs to be a multiple of 12
 APPLE_QUADRANT = random.randint(1, 5)
+
+MAX_WORM_LENGTH = 10
 
 #             R    G    B
 WHITE     = (255, 255, 255)
@@ -64,6 +67,7 @@ def main():
 
 
 def runGame():
+    global CELLWIDTH, CELLHEIGHT
     # Set a random start point.
     startx = random.randint(5, CELLWIDTH - 6)
     starty = random.randint(5, CELLHEIGHT - 6)
@@ -88,50 +92,66 @@ def runGame():
         # direction = handlePlayerInput(direction)
         direction = handleAgentInput(direction, wormCoords)
 
-        if wormCoords[0][HEAD] == wormCoords[1][HEAD]:
-            return # game over, both worms at fault for hitting eachother at same time
-        if wormCoords[0][HEAD]['x'] == -1 or wormCoords[0][HEAD]['x'] == CELLWIDTH or wormCoords[0][HEAD][
-            'y'] == -1 or wormCoords[0][HEAD]['y'] == CELLHEIGHT:
-            return # game over, worm 1's fault for hitting wall
-        for wormBody in wormCoords[0][1:]:
-            if wormBody['x'] == wormCoords[0][HEAD]['x'] and wormBody['y'] == wormCoords[0][HEAD]['y']:
-                return # game over, worm 1's fault for hitting itself
-        if wormCoords[0][HEAD] in wormCoords[1]:
-            return # game over, worm 1's fault for hitting worm 2
-        if wormCoords[1][HEAD]['x'] == -1 or wormCoords[1][HEAD]['x'] == CELLWIDTH or wormCoords[1][HEAD]['y'] == -1 or \
-                wormCoords[1][HEAD]['y'] == CELLHEIGHT:
-            return # game over, worm 2's fault for hitting wall or itself
-        for wormBody in wormCoords[1][1:]:
-            if wormBody['x'] == wormCoords[1][HEAD]['x'] and wormBody['y'] == wormCoords[1][HEAD]['y']:
-                return # game over, worm 2's fault for hitting itself
-        if wormCoords[1][HEAD] in wormCoords[0]:
-            return # game over, worm 2's fault for hitting worm 1
+        dead_worms = []
 
-        # move the worm by adding a segment in the direction it is moving
-        if direction[0] == UP:
-            newHeadA = {'x': wormCoords[0][HEAD]['x'], 'y': wormCoords[0][HEAD]['y'] - 1}
-        elif direction[0] == DOWN:
-            newHeadA = {'x': wormCoords[0][HEAD]['x'], 'y': wormCoords[0][HEAD]['y'] + 1}
-        elif direction[0] == LEFT:
-            newHeadA = {'x': wormCoords[0][HEAD]['x'] - 1, 'y': wormCoords[0][HEAD]['y']}
-        elif direction[0] == RIGHT:
-            newHeadA = {'x': wormCoords[0][HEAD]['x'] + 1, 'y': wormCoords[0][HEAD]['y']}
-        wormCoords[0].insert(0, newHeadA)
-        if direction[1] == UP:
-            newHeadB = {'x': wormCoords[1][HEAD]['x'], 'y': wormCoords[1][HEAD]['y'] - 1}
-        elif direction[1] == DOWN:
-            newHeadB = {'x': wormCoords[1][HEAD]['x'], 'y': wormCoords[1][HEAD]['y'] + 1}
-        elif direction[1] == LEFT:
-            newHeadB = {'x': wormCoords[1][HEAD]['x'] - 1, 'y': wormCoords[1][HEAD]['y']}
-        elif direction[1] == RIGHT:
-            newHeadB = {'x': wormCoords[1][HEAD]['x'] + 1, 'y': wormCoords[1][HEAD]['y']}
-        wormCoords[1].insert(0, newHeadB)
+        for i in range(len(wormCoords)):
+            for wormBody in wormCoords[i][1:]:
+                if wormBody['x'] == wormCoords[i][HEAD]['x'] and wormBody['y'] == wormCoords[i][HEAD]['y']:
+                    if i not in dead_worms:
+                        dead_worms.append(i)  # game over, worm 1's fault for hitting itself
+
+            if wormCoords[i][HEAD]['x'] == -1 or wormCoords[i][HEAD]['x'] == CELLWIDTH or wormCoords[i][HEAD]['y'] == -1 or \
+                    wormCoords[i][HEAD]['y'] == CELLHEIGHT:
+                if i not in dead_worms:
+                    dead_worms.append(i)
+
+            for j in range(len(wormCoords)):
+                if i == j:
+                    pass
+                elif wormCoords[i][HEAD] in wormCoords[j]:
+                    if len(wormCoords[i]) > len(wormCoords[j]):
+                        if i not in dead_worms:
+                            dead_worms.append(i)
+                    else:
+                        if j not in dead_worms:
+                            dead_worms.append(j)
+
+            if len(wormCoords[i]) > MAX_WORM_LENGTH:
+                if i not in dead_worms:
+                    dead_worms.append(i)
+                wormCoords.append([{'x': wormCoords[i][0]['x'], 'y': wormCoords[i][0]['y']},
+                                  {'x': wormCoords[i][1]['x'], 'y': wormCoords[i][1]['y']},
+                                  {'x': wormCoords[i][2]['x'], 'y': wormCoords[i][2]['y']}])
+
+                wormCoords.append([{'x': wormCoords[i][6]['x'], 'y': wormCoords[i][6]['y']},
+                                   {'x': wormCoords[i][7]['x'], 'y': wormCoords[i][7]['y']},
+                                   {'x': wormCoords[i][8]['x'], 'y': wormCoords[i][8]['y']}])
+                direction.append(direction[i])
+                direction.append(direction[i])
+
+        for i in dead_worms:
+            del wormCoords[i]
+            del direction[i]
+
+        for i in range(len(wormCoords)):
+            if direction[i] == UP:
+                newHead = {'x': wormCoords[i][HEAD]['x'], 'y': wormCoords[i][HEAD]['y'] - 1}
+            elif direction[i] == DOWN:
+                newHead = {'x': wormCoords[i][HEAD]['x'], 'y': wormCoords[i][HEAD]['y'] + 1}
+            elif direction[i] == LEFT:
+                newHead = {'x': wormCoords[i][HEAD]['x'] - 1, 'y': wormCoords[i][HEAD]['y']}
+            elif direction[i] == RIGHT:
+                newHead = {'x': wormCoords[i][HEAD]['x'] + 1, 'y': wormCoords[i][HEAD]['y']}
+            wormCoords[i].insert(0, newHead)
+
         DISPLAYSURF.fill(BGCOLOR)
         drawGrid()
         drawWorms(wormCoords)
         for apple in APPLES:
             drawApple(apple)
         drawScore()
+        if len(wormCoords) <= 0:
+            return
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
@@ -139,19 +159,14 @@ def updateApples(wormCoords):
     # check if worm has eaten an apply
     global SCORE
     genApples()
-    APPLES[:] = [x for x in APPLES if not appleCollision(wormCoords[0], x)]
-    if len(APPLES) < NUM_APPLES:
-        SCORE += 1
-    else:
-        del wormCoords[0][-1]  # remove worm's tail segment
-    genApples()
-    # check if worm 2 has eaten an apply
-    APPLES[:] = [x for x in APPLES if not appleCollision(wormCoords[1], x)]
-    if len(APPLES) < NUM_APPLES:
-        SCORE += 1
-    else:
-        del wormCoords[1][-1]  # remove worm's tail segment
-    genApples()
+
+    for i in range(len(wormCoords)):
+        APPLES[:] = [x for x in APPLES if not appleCollision(wormCoords[i], x)]
+        if len(APPLES) < NUM_APPLES:
+            SCORE += 1
+        else:
+            del wormCoords[i][-1]  # remove worm's tail segment
+        genApples()
 
     for i in range(NUM_APPLES):
         APPLE_TIMES[i] -= 1
@@ -182,8 +197,9 @@ def genApples():
         genApplesFive()
     elif APPLE_OPTION == 6:
         genApplesSix()
-    # elif APPLE_OPTION == 7:
-    #     genApplesSeven()
+    elif APPLE_OPTION == 7:
+        # genApplesSeven()
+        pass
     else:
         print("Error: invalid genApples option")
 
@@ -339,8 +355,9 @@ def drawScore():
     DISPLAYSURF.blit(scoreSurf, scoreRect)
 
 def drawWorms(wormCoords):
-    drawWorm(wormCoords[0], [DARKGREEN, GREEN])
-    drawWorm(wormCoords[1], [DARKBLUE, BLUE])
+    for i in range(len(wormCoords)):
+        drawWorm(wormCoords[i], [DARKGREEN, GREEN])
+
 
 def drawWorm(wormCoords, colors):
     for coord in wormCoords:
