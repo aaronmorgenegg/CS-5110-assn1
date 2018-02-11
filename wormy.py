@@ -3,7 +3,7 @@
 # http://inventwithpython.com/pygame
 # Released under a "Simplified BSD" license
 
-import random, pygame, sys, itertools
+import random, pygame, sys
 
 from math import sqrt
 from pygame.locals import *
@@ -19,7 +19,7 @@ CELLWIDTH = int(WINDOWWIDTH / CELLSIZE)
 CELLHEIGHT = int(WINDOWHEIGHT / CELLSIZE)
 
 NUM_APPLES = 20
-APPLE_OPTION = 3
+APPLE_OPTION = 2
 SHORT_TIME = 300
 MIN_APPLE_DISTANCE = 15
 
@@ -67,7 +67,7 @@ def main():
 
 
 def runGame():
-    global CELLWIDTH, CELLHEIGHT
+    global CELLWIDTH, CELLHEIGHT, SCORE
     # Set a random start point.
     startx = random.randint(5, CELLWIDTH - 6)
     starty = random.randint(5, CELLHEIGHT - 6)
@@ -80,6 +80,7 @@ def runGame():
                    {'x': CELLWIDTH - startx - 2, 'y': CELLHEIGHT - starty}]
                   ]
     direction = [RIGHT, RIGHT]
+    colors = [getRandomColor(), getRandomColor()]
 
     del APPLES[:]
     del APPLE_TIMES[:]
@@ -128,10 +129,13 @@ def runGame():
                                    {'x': wormCoords[i][8]['x'], 'y': wormCoords[i][8]['y']}])
                 direction.append(direction[i])
                 direction.append(direction[i])
+                colors.append(getRandomColor())
+                colors.append(getRandomColor())
 
         for i in dead_worms:
             del wormCoords[i]
             del direction[i]
+            del colors[i]
 
         for i in range(len(wormCoords)):
             if direction[i] == UP:
@@ -146,7 +150,7 @@ def runGame():
 
         DISPLAYSURF.fill(BGCOLOR)
         drawGrid()
-        drawWorms(wormCoords)
+        drawWorms(wormCoords, colors)
         for apple in APPLES:
             drawApple(apple)
         drawScore()
@@ -354,10 +358,9 @@ def drawScore():
     scoreRect.topleft = (WINDOWWIDTH - 100, 10)
     DISPLAYSURF.blit(scoreSurf, scoreRect)
 
-def drawWorms(wormCoords):
+def drawWorms(wormCoords, colors):
     for i in range(len(wormCoords)):
-        drawWorm(wormCoords[i], [DARKGREEN, GREEN])
-
+        drawWorm(wormCoords[i], colors[i])
 
 def drawWorm(wormCoords, colors):
     for coord in wormCoords:
@@ -497,6 +500,11 @@ def handlePlayerInput(direction):
                 terminate()
 
     return direction
+
+def getRandomColor():
+    color1 = [random.randint(0, 155), random.randint(0, 155), random.randint(0, 155)]
+    color2 = [color1[0]+100, color1[1]+100, color1[2]+100]
+    return (color1, color2)
 
 
 if __name__ == '__main__':
