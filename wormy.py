@@ -19,7 +19,7 @@ CELLWIDTH = int(WINDOWWIDTH / CELLSIZE)
 CELLHEIGHT = int(WINDOWHEIGHT / CELLSIZE)
 
 NUM_APPLES = 30
-APPLE_OPTION = 2
+APPLE_OPTION = 5
 SHORT_TIME = 300
 MIN_APPLE_DISTANCE = 15
 
@@ -30,8 +30,8 @@ APPLE_OPTION_TIMER = 360 # needs to be a multiple of 12
 APPLE_QUADRANT = random.randint(1, 5)
 
 MAX_WORM_LENGTH = 10
-AGENT_CONTROL = True
-CENTRAL_CONTROL = False
+AGENT_CONTROL = False
+CENTRAL_CONTROL = True
 
 #             R    G    B
 WHITE     = (255, 255, 255)
@@ -210,8 +210,7 @@ def genApples():
     elif APPLE_OPTION == 6:
         genApplesSix()
     elif APPLE_OPTION == 7:
-        # genApplesSeven()
-        pass
+        genApplesSeven()
     else:
         print("Error: invalid genApples option")
 
@@ -268,6 +267,27 @@ def genApplesSix():
         while len(APPLES) < NUM_APPLES:
             APPLES.append(getRandomLocationQuadrant(4))
             APPLE_TIMES.append(SHORT_TIME)
+
+def genApplesSeven():
+    global APPLE_OPTION_TIMER
+    APPLE_OPTION_TIMER -= 1
+    if APPLE_OPTION_TIMER <= 0:
+        APPLE_OPTION_TIMER = 360
+    if APPLE_OPTION_TIMER <= 70:
+        while len(APPLES) < NUM_APPLES:
+            genApplesOne()
+    elif APPLE_OPTION_TIMER <= 140:
+        while len(APPLES) < NUM_APPLES:
+            genApplesTwo()
+    elif APPLE_OPTION_TIMER <=210:
+        while len(APPLES) < NUM_APPLES:
+            genApplesThree()
+    elif APPLE_OPTION_TIMER <= 300:
+        while len(APPLES) < NUM_APPLES:
+            genApplesFive()
+    else:
+        while len(APPLES) < NUM_APPLES:
+            genApplesSix()
 
 def appleCollision(wormCoords, apple):
     if wormCoords[HEAD]['x'] == apple['x'] and wormCoords[HEAD]['y'] == apple['y']:
@@ -410,7 +430,7 @@ def findNearestApple(wormCoords):
                 shortest_dist = dist
                 nearestApple = apple
 
-    if shortest_dist < MIN_APPLE_DISTANCE:
+    if shortest_dist < MIN_APPLE_DISTANCE or CENTRAL_CONTROL:
         return nearestApple
 
 def findTargetDirection(target, wormCoords):
